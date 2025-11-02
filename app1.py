@@ -1,26 +1,22 @@
-# swing_trading_dashboard.py
+# swing_trading_dashboard_live.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-from sklearn.preprocessing import MinMaxScaler
+import yfinance as yf
 
 st.set_page_config(page_title="Swing Trading Dashboard", layout="wide")
 
 # --- Helper functions ---
-def generate_synthetic_data(days=365):
-    """Generer eksempeldata for Copper & Corn"""
-    date_range = pd.date_range(end=datetime.today(), periods=days)
-    copper_prices = np.cumsum(np.random.randn(days)) + 400
-    corn_prices = np.cumsum(np.random.randn(days)) + 600
-    df = pd.DataFrame({'Date': date_range, 'Copper': copper_prices, 'Corn': corn_prices})
-    return df
+def fetch_data(symbol, period="1y"):
+    """Hent historiske priser fra yfinance"""
+    df = yf.Ticker(symbol).history(period=period)
+    df.reset_index(inplace=True)
+    return df[['Date', 'Close']].rename(columns={'Close': symbol})
 
 def create_lstm_prediction(prices, future_days=30):
-    """Simuler LSTM-prediktion"""
+    """Simuler LSTM-prediktion (placeholder for demo)"""
     return prices[-1] + np.cumsum(np.random.randn(future_days))
 
 def generate_trade_ideas(latest_price):
@@ -30,19 +26,25 @@ def generate_trade_ideas(latest_price):
     else:
         return {"Type": "SHORT", "Entry": latest_price, "Target": latest_price*0.95, "Stop": latest_price*1.02}
 
-# --- Load / simulate data ---
-df = generate_synthetic_data()
+# --- Fetch live data ---
+corn_symbol = "ZC=F"   # Corn futures
+copper_symbol = "HG=F" # Copper futures
+
+corn_df = fetch_data(corn_symbol)
+copper_df = fetch_data(copper_symbol)
+
+latest_corn = corn_df[corn_symbol].iloc[-1]
+latest_copper = copper_df[copper_symbol].iloc[-1]
+
+corn_trade = generate_trade_ideas(latest_corn)
+copper_trade = generate_trade_ideas(latest_copper)
 
 # --- Dashboard layout ---
 st.title("📊 Swing Trading Dashboard")
 st.markdown("Automatisk genererede trade-idéer og prisprognoser")
 
-# --- Cards ---
+# --- Cards (Corn til højre, Copper til venstre) ---
 col1, col2 = st.columns(2)
-latest_copper = df['Copper'].iloc[-1]
-latest_corn = df['Corn'].iloc[-1]
-copper_trade = generate_trade_ideas(latest_copper)
-corn_trade = generate_trade_ideas(latest_corn)
 
 with col1:
     st.metric(label="Copper (USD)", value=f"{latest_copper:.2f}", delta=f"{(copper_trade['Target']-latest_copper)/latest_copper*100:.2f}%")
@@ -54,14 +56,14 @@ with col2:
 
 # --- Historical + predicted graph ---
 future_days = 30
-copper_pred = create_lstm_prediction(df['Copper'].values, future_days)
-corn_pred = create_lstm_prediction(df['Corn'].values, future_days)
-future_dates = pd.date_range(start=df['Date'].iloc[-1]+pd.Timedelta(days=1), periods=future_days)
+copper_pred = create_lstm_prediction(copper_df[copper_symbol].values, future_days)
+corn_pred = create_lstm_prediction(corn_df[corn_symbol].values, future_days)
+future_dates = pd.date_range(start=copper_df['Date'].iloc[-1]+pd.Timedelta(days=1), periods=future_days)
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=df['Date'], y=df['Copper'], mode='lines', name='Copper History'))
+fig.add_trace(go.Scatter(x=copper_df['Date'], y=copper_df[copper_symbol], mode='lines', name='Copper History'))
 fig.add_trace(go.Scatter(x=future_dates, y=copper_pred, mode='lines', name='Copper Pred'))
-fig.add_trace(go.Scatter(x=df['Date'], y=df['Corn'], mode='lines', name='Corn History'))
+fig.add_trace(go.Scatter(x=corn_df['Date'], y=corn_df[corn_symbol], mode='lines', name='Corn History'))
 fig.add_trace(go.Scatter(x=future_dates, y=corn_pred, mode='lines', name='Corn Pred'))
 
 st.plotly_chart(fig, use_container_width=True)
