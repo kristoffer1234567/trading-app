@@ -5,3 +5,9 @@ numpy
 matplotlib
 scikit-learn
 tensorflow
+streamlit
+plotly
+pandas
+numpy
+tensorflow
+scikit-learn
