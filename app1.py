@@ -100,27 +100,27 @@ pred_corn = predict_future(model_corn, last_seq, time_horizon_days, scaler, 1)
 # 1️⃣1️⃣ Automatisk portefølje
 future_dates = pd.date_range(df_all.index[-1]+pd.Timedelta(days=1), periods=time_horizon_days)
 df_portfolio = pd.DataFrame(index=future_dates, columns=['Symbol','Signal','Price','Contracts','StopLoss','TakeProfit','ExpectedReturn','CumulativeP&L'])
-last_prices = {'Copper': df_all['HG=F'].iloc[-1], 'Corn': df_all['ZC=F'].iloc[-1]}
+last_prices = {'Copper': float(df_all['HG=F'].iloc[-1]), 'Corn': float(df_all['ZC=F'].iloc[-1])}
 cumulative_pnl = 0
 
 for i in range(time_horizon_days):
     copper_ret = (pred_copper[i]-last_prices['Copper'])/last_prices['Copper']
     corn_ret = (pred_corn[i]-last_prices['Corn'])/last_prices['Corn']
 
-    # ✅ Fix: konverter til tal
+    # Fix: konverter til float
     copper_ret_val = float(copper_ret)
     corn_ret_val = float(corn_ret)
 
     if copper_ret_val > corn_ret_val:
         symbol = 'Copper'
-        price = pred_copper[i]
-        signal = 'LONG' if price>last_prices['Copper'] else 'SHORT'
+        price = float(pred_copper[i])
+        signal = 'LONG' if price > last_prices['Copper'] else 'SHORT'
         last_prices['Copper'] = price
         expected_return = copper_ret_val
     else:
         symbol = 'Corn'
-        price = pred_corn[i]
-        signal = 'LONG' if price>last_prices['Corn'] else 'SHORT'
+        price = float(pred_corn[i])
+        signal = 'LONG' if price > last_prices['Corn'] else 'SHORT'
         last_prices['Corn'] = price
         expected_return = corn_ret_val
 
